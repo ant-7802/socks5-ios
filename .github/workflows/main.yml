@@ -1,0 +1,65 @@
+name: "Build iOS app"
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build_without_signing:
+    runs-on: macos-latest
+    steps:
+      # Check Xcode version
+      - name: Check Xcode version
+        run: /usr/bin/xcodebuild -version
+
+      # Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Build archive
+      - name: Build archive
+        run: |
+          xcodebuild -scheme "SOCKS" \
+          -archivePath $RUNNER_TEMP/app.xcarchive \
+          -sdk iphoneos \
+          -configuration Debug \
+          -destination generic/platform=iOS \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          clean archive
+
+      # Export ipa
+      - name: Export ipa
+        run: |
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > $RUNNER_TEMP/ExportOptions.plist
+          echo '<plist version="1.0">' >> $RUNNER_TEMP/ExportOptions.plist
+          echo '<dict>' >> $RUNNER_TEMP/ExportOptions.plist
+          echo '  <key>method</key>' >> $RUNNER_TEMP/ExportOptions.plist
+          echo '  <string>development</string>' >> $RUNNER_TEMP/ExportOptions.plist
+          echo '  <key>signingStyle</key>' >> $RUNNER_TEMP/ExportOptions.plist
+          echo '  <string>manual</string>' >> $RUNNER_TEMP/ExportOptions.plist
+          echo '  <key>signingCertificate</key>' >> $RUNNER_TEMP/ExportOptions.plist
+          echo '  <string></string>' >> $RUNNER_TEMP/ExportOptions.plist
+          echo '  <key>signingRequired</key>' >> $RUNNER_TEMP/ExportOptions.plist
+          echo '  <false/>' >> $RUNNER_TEMP/ExportOptions.plist
+          echo '</dict>' >> $RUNNER_TEMP/ExportOptions.plist
+          echo '</plist>' >> $RUNNER_TEMP/ExportOptions.plist
+
+          xcodebuild -exportArchive \
+          -archivePath $RUNNER_TEMP/app.xcarchive \
+          -exportPath $RUNNER_TEMP/build \
+          -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
+
+      # Upload application
+      - name: Upload application
+        uses: actions/upload-artifact@v3
+        with:
+          name: app
+          path: $RUNNER_TEMP/build/app.ipa
+          retention-days: 3
