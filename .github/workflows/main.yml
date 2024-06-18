@@ -18,6 +18,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Verify repository structure and file existence
+      - name: List repository files
+        run: ls -R && git submodule update
+
       # Build archive
       - name: Build archive
         run: |
